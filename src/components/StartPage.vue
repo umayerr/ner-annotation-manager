@@ -12,15 +12,14 @@
     <p :class="['text-subtitle1', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">
       Annotate text for spaCy NER Model training
     </p>
-    <!-- TODO: modify accept to also accept json, change label text to match -->
     <div class="q-my-xl q-py-md" style="margin-top: 7rem">
       <q-file
-        v-model="textFile"
-        accept=".txt"
+        v-model="file"
+        accept=".txt, .json"
         @rejected="fileSelectionError"
         filled
         @update:model-value="onFileSelected"
-        label="Open a text file to begin"
+        label="Open a text or json file to begin"
         :bg-color="$q.dark.isActive ? 'black-1' : 'light-blue-1'"
       >
         <template v-slot:prepend>
@@ -136,25 +135,47 @@ import { mapMutations } from "vuex";
 
 export default {
   name: "StartPage",
-  emits: ["file-loaded"],
+  emits: ["text-file-loaded", "json-file-loaded"],
   data() {
     return {
-      textFile: null,
+      file: null,
     };
   },
   methods: {
     ...mapMutations(["setInputSentences"]),
+    // onFileSelected() is called if the user clicks and manually
+    //    selects a file. If they drag and drop, that is handled in
+    //    App.vue. If you modify this function, you may also want to 
+    //    modify the other functions in App.vue to match: onDrop() 
+    //    and processFileDrop().
     onFileSelected(file) {
-      try {
+      let fileType = file.name.split('.').pop();
+        // If it is a text file, enter annotation mode
+      if (fileType === "txt") {
         let reader = new FileReader();
         reader.addEventListener("load", (event) => {
           this.setInputSentences(event.target.result);
-          this.$emit("file-loaded");
+          this.$emit("text-file-loaded");
         });
         reader.readAsText(file);
-      } catch(e) {
-        this.fileSelectionError();
       }
+      // If it is a json file, enter review mode
+      else if (fileType === "json") {
+        console.log("Will enter review mode: not yet implemented")
+        // TODO: implement logic here that would enter review mode.
+        //    The code below imports the tags file.
+        this.loadAnnotations(JSON.parse(file));
+        this.notify(
+          "fa fa-check",
+          `${this.classes.length} tags imported successfully\n, Annotations imported successfully`,
+          "positive"
+        );
+        this.$emit("json-file-loaded")
+      }
+      else {
+        alert('Please upload either a .txt or a .json file.');
+      }
+      
     },
     fileSelectionError() {
       this.$q.notify({
