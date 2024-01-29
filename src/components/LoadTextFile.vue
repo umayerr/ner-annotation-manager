@@ -1,6 +1,6 @@
  <!-- TODO: I have only updated the drag method and click method on start page. I haven't hardly touched this file. -->
 
-<template>
+ <template>
   <div class="field">
     <div class="file is-centered is-primary has-name is-boxed my-4">
       <label class="file-label">
