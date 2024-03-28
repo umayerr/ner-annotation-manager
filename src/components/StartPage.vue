@@ -158,12 +158,9 @@ export default {
           this.$emit("text-file-loaded");
         });
         reader.readAsText(file);
-      }
+      }    
       // If it is a json file, enter review mode
       else if (fileType === "json") {
-        console.log("Will enter review mode: not yet implemented")
-        // TODO: implement logic here that would enter review mode.
-        //    The code below imports the tags file.
         this.loadAnnotations(JSON.parse(file));
         this.notify(
           "fa fa-check",
@@ -175,7 +172,6 @@ export default {
       else {
         alert('Please upload either a .txt or a .json file.');
       }
-      
     },
     fileSelectionError() {
       this.$q.notify({

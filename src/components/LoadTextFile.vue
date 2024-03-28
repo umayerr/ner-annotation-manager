@@ -32,18 +32,37 @@ export default {
   emits: ["text-file-loaded", "json-file-loaded"],
   methods: {
     ...mapMutations(["setInputSentences"]),
-    // TODO: UPDATE THIS function based off of StartPage.vue's function onFileSelected()
-    onFileSelected(e) {
-      console.log("OnFileSelected in LoadTextFile.vue")
-      let files = e.target.files;
-      if (!files.length) return;
+    onFileSelected(files) {
+      let fs = files.target.files;
+      if (!fs.length || fs.length > 1) {
+        console.log("Either 0 or >1 file was uploaded, returning.");
+        return;
+      }
+      file = fs[0]
 
-      let reader = new FileReader();
-      reader.addEventListener("load", (event) => {
-        this.setInputSentences(event.target.result);
-        this.$emit("text-file-loaded");
-      });
-      reader.readAsText(files[0]);
+      let fileType = file.name.split('.').pop();
+        // If it is a text file, enter annotation mode
+      if (fileType === "txt") {
+        let reader = new FileReader();
+        reader.addEventListener("load", (event) => {
+          this.setInputSentences(event.target.result);
+          this.$emit("text-file-loaded");
+        });
+        reader.readAsText(file);
+      }    
+      // If it is a json file, enter review mode
+      else if (fileType === "json") {
+        this.loadAnnotations(JSON.parse(file));
+        this.notify(
+          "fa fa-check",
+          `${this.classes.length} tags imported successfully\n, Annotations imported successfully`,
+          "positive"
+        );
+        this.$emit("json-file-loaded")
+      }
+      else {
+        alert('Please upload either a .txt or a .json file.');
+      }
     },
   },
 };
