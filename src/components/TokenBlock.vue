@@ -7,16 +7,29 @@
       :key="t.start"
       :token="t"
     />
-    <span class="tag" @click="toggleSymbol">
-      <i :class="symbolClass"></i>
+    <span class="tag">
+      <!-- Toggle status cycle button -->
+      <i :class="symbolClass" @click="toggleSymbol"></i>
       {{ token.label }}
+      <!-- Replace label button (double arrows) -->
+      <q-btn
+        icon="fa fa-exchange-alt"
+        round
+        flat
+        size="xs"
+        text-color="grey-7"
+        title="Change label to currently selected label"
+        @click="$emit('replace-block-label', token.start)"
+      />
+      <!-- Delete label button (X) -->
       <q-btn
         icon="fa fa-times-circle"
         round
         flat
         size="xs"
         text-color="grey-7"
-        @click.stop="$emit('remove-block', token.start)"
+        title="Delete annotation"
+        @click="$emit('remove-block', token.start)"
       />
     </span>
   </mark>
