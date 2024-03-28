@@ -5,14 +5,17 @@ class TokenManager {
    */
   constructor(classes) {
     this.classes = classes
+    this.tokens = []; // Initialize tokens array
   }
 
   setTokensAndAnnotation(tokens, currentAnnotation) {
+    // Initialize tokens with provided annotation data
     this.tokens = tokens.map((t) => ({
       type: "token",
       start: t[0],
       end: t[1],
       text: t[2],
+      humanOpinion: true, // Default humanOpinion to true for all initial tokens
     }));
     this.words = tokens.map(t => t[2]);
 
@@ -26,7 +29,7 @@ class TokenManager {
         if (!entityClass) {
           entityClass = {"name": entityName};
         }
-        this.addNewBlock(start, end, entityClass)
+        this.addNewBlock(start, end, entityClass, true, name === "nlp");
       }
     }
   }
@@ -38,14 +41,34 @@ class TokenManager {
    * @param {Number} start 'start' value of the token forming the start of the token block
    * @param {Number} end 'start' value of the token forming the end of the token block
    * @param {Number} _class the id of the class to highlight
+   * @param {Boolean} isHumanOpinion Seperate nlp vs human made annotation
+
    */
-  addNewBlock(_start, _end, _class) {
+  addNewBlock(_start, _end, _class, humanOpinion, initiallyNLP = false, isLoaded, name="name", status ="suggested") {
+    // Directly apply humanOpinion to the block structure
+    let block = {
+      type: "token-block",
+      start: _start,
+      end: _end,
+      name: name,
+      label: _class.name,
+      humanOpinion: humanOpinion,
+      initiallyNLP: initiallyNLP,
+      userHasToggled: false, // Ensure it's set for the new block
+      isSymbolActive: false, // Ensure it's set for the new block
+      isSuggested: false,
+      isLoaded: isLoaded,
+      status: status,
+      tokens: this.tokens.filter(token => token.start >= _start && token.end <= _end),
+      backgroundColor: _class.color || null,
+    };
+    console.log("addNewBlock's opinion: ", humanOpinion);
     let selectedTokens = [];
     let newTokens = [];
-
+  
     let selectionStart = _end < _start ? _end : _start;
     let selectionEnd = _end > _start ? _end : _start;
-    
+  
     for (let i = 0; i < this.tokens.length; i++) {
       let currentToken = this.tokens[i];
       if (currentToken.end < selectionStart) {
@@ -72,81 +95,59 @@ class TokenManager {
                 tokensAfterSelection.push(oldToken);
               }
             }
-
-            if (tokensBeforeSelection.length) {
-              newTokens.push({
-                type: "token-block",
-                start: tokensBeforeSelection[0].start,
-                end: tokensBeforeSelection[tokensBeforeSelection.length - 1].end,
-                tokens: tokensBeforeSelection,
-                label: currentToken.label,
-                classId: currentToken.classId,
-                backgroundColor: currentToken.backgroundColor,
-              })
-            }
-
-            if (selectedTokens.length && tokensAfterSelection.length) {
-              // there are selected tokens and more tokens in block after selection
-              newTokens.push({
-                type: "token-block",
-                start: selectedTokens[0].start,
-                end: selectedTokens[selectedTokens.length - 1].end,
-                tokens: selectedTokens,
-                label: _class && _class.name ? _class.name : "Unlabelled",
-                classId: _class && _class.id ? _class.id : 0,
-                backgroundColor: _class && _class.color ? _class.color : null,
-              });
-              selectedTokens = [];
-            }
-
-            if (tokensAfterSelection.length) {
-              newTokens.push({
-                type: "token-block",
-                start: tokensAfterSelection[0].start,
-                end: tokensAfterSelection[tokensAfterSelection.length - 1].end,
-                tokens: tokensAfterSelection,
-                label: currentToken.label,
-                classId: currentToken.classId,
-                backgroundColor: currentToken.backgroundColor,
-              })
-            }
+  
+            // Append new blocks with necessary attributes for before and after the selection
+            appendNewBlock(tokensBeforeSelection, currentToken, newTokens);
+            appendNewBlock(selectedTokens, _class, newTokens, true); // Append selected tokens with updated attributes
+            appendNewBlock(tokensAfterSelection, currentToken, newTokens);
+  
+            selectedTokens = []; // Reset selectedTokens for potential next use
           }
         } else if (currentToken.type == "token") {
           selectedTokens.push(currentToken);
         }
       } else if (currentToken.start >= selectionEnd && selectedTokens.length) {
         // token is first after the selection
-        newTokens.push({
-          type: "token-block",
-          start: selectedTokens[0].start,
-          end: selectedTokens[selectedTokens.length - 1].end,
-          tokens: selectedTokens,
-          label: _class && _class.name ? _class.name : "Unlabelled",
-          classId: _class && _class.id ? _class.id : 0,
-          backgroundColor: _class && _class.color ? _class.color : null,
-        });
-        selectedTokens = [];
+        appendNewBlock(selectedTokens, _class, newTokens, true); // Append selected tokens with updated attributes
+        selectedTokens = []; // Ensure selected tokens are cleared after use
         newTokens.push(currentToken);
       } else {
         newTokens.push(currentToken);
       }
     }
-
-    // Case if the selected tokens are at the end of the text and have not been added to the newTokens
+  
+    // Append block at the end if there are remaining selected tokens
     if (selectedTokens.length) {
-      newTokens.push({
-        type: "token-block",
-        start: selectedTokens[0].start,
-        end: selectedTokens[selectedTokens.length - 1].end,
-        tokens: selectedTokens,
-        label: _class && _class.name ? _class.name : "Unlabelled",
-        classId: _class && _class.id ? _class.id : 0,
-        backgroundColor: _class && _class.color ? _class.color : null,
-      });
+      newTokens.push(block);
+      appendNewBlock(selectedTokens, _class, newTokens, true); // Append remaining selected tokens with updated attributes
     }
-
+  
+    // Update the tokens array with new tokens
     this.tokens = newTokens;
+    function appendNewBlock(tokens, _class, tokensArray, updateAttributes = false) {
+      if (tokens.length) {
+        let newBlock = {
+          type: "token-block",
+          start: tokens[0].start,
+          end: tokens[tokens.length - 1].end,
+          name: name,
+          tokens: tokens,
+          label: _class.name,
+          classId: _class.id || 0,
+          backgroundColor: _class.color || null,
+          // Set these attributes for all token-blocks, updating existing blocks as needed
+          initiallyNLP: updateAttributes ? initiallyNLP : false,
+          userHasToggled: false,
+          isSymbolActive: false,
+          isLoaded: isLoaded,
+          status: status,
+        };
+        tokensArray.push(newBlock);
+      }
   }
+  }
+  
+    
 
   /**
    * Removes a token block and puts back all the tokens in their original position
@@ -188,10 +189,16 @@ class TokenManager {
    */
   exportAsAnnotation() {
     let entities = [];
+    const currentDate = new Date();
+    const dateFormatter = new Intl.DateTimeFormat('en', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    const timeFormatter = new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const date = dateFormatter.format(currentDate);
+    const time = timeFormatter.format(currentDate);
     for (let i = 0; i < this.tokens.length; i++) {
       if (this.tokens[i].type === "token-block") {
         let b = this.tokens[i];
-        entities.push([b.start, b.end, b.label]);
+        console.log("export As annotations this is ", b);
+        entities.push([b.name, date, time, b.start, b.end, b.label, b.initiallyNLP, b.isSymbolActive, b.userHasToggled, b.isLoaded,b.status]);
       }
     }
     return entities;
@@ -201,7 +208,6 @@ class TokenManager {
   getBlockByStart(start) {
     for (let i = 0; i < this.tokens.length; i++) {
       const token = this.tokens[i];
-  
       if (token.type === "token-block" && token.start === start) {
         return token;
       }
@@ -212,3 +218,9 @@ class TokenManager {
 }
 
 export default TokenManager;
+
+
+
+/// Make toggle between open/close/reject
+/// Update it so previous / loadable 
+/// 

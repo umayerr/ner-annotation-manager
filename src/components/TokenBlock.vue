@@ -2,73 +2,84 @@
   <mark :class="'bg-' + backgroundColor">
     <component
       :is="'Token'"
-      :id="'t' + t.start"
       v-for="t in token.tokens"
-      :token="t"
+      :id="'t' + t.start"
       :key="t.start"
+      :token="t"
     />
-    <span class="tag">
+    <span class="tag" @click="toggleSymbol">
+      <i :class="symbolClass"></i>
       {{ token.label }}
-      <!-- Replace label button (double arrows) -->
-      <q-btn
-        icon="fa fa-exchange-alt"
-        round
-        flat
-        size="xs"
-        text-color="grey-7"
-        title="Change label to currently selected label"
-        @click="$emit('replace-block-label', token.start)"
-      />
-      <!-- Delete label button (X) -->
       <q-btn
         icon="fa fa-times-circle"
         round
         flat
         size="xs"
         text-color="grey-7"
-        title="Delete annotation"
-        @click="$emit('remove-block', token.start)"
+        @click.stop="$emit('remove-block', token.start)"
       />
     </span>
   </mark>
 </template>
+
 <script>
 import Token from "./Token";
 
 export default {
   name: "TokenBlock",
-  emits: ["remove-block", "replace-block-label"],
-  data: function() {
-    return {
-      showClose: false,
-    };
-  },
-  props: {
-    token: {
-      type: Object,
-      requried: true,
-    },
-    backgroundColor: {
-      type: String,
-      required: false,
-    },
-  },
   components: {
     Token,
   },
+  props: {
+    token: Object,
+    backgroundColor: String,
+    humanOpinion: Boolean,
+  },
+  data() {
+    return {
+        // Initial state
+        isSymbolActive: false,
+        userHasToggled: false, // Tracks if the user has interacted with the token
+      };
+    },
+    computed: {
+      symbolClass() {
+        if (!this.userHasToggled)  {
+          console.log("After loading symbolClass is human? ",this)
+          // Initial icon state: circle only if humanOpinion is false, otherwise cross
+          return !this.humanOpinion ? "fas fa-circle" : "fas fa-times-circle";
+        } else {
+          // Once toggled, switch between checkmark and cross
+          return this.isSymbolActive ? "fas fa-check-circle" : "fas fa-times-circle";
+        }
+      },
+    },
+    methods: {
+      toggleSymbol() {
+        if (this.token.initiallyNLP && !this.userHasToggled) {
+          // If initially set by NLP and user hasn't toggled yet, allow toggle to false
+          this.isSymbolActive = false;
+        } else {
+          // Normal toggle behavior
+          this.isSymbolActive = !this.isSymbolActive;
+        }
+        this.userHasToggled = true;
+      },
+    },
+    created() {
+  console.log("TokenBlock created with humanOpinion:", this.humanOpinion);
+},
 };
 </script>
 
 <style lang="scss">
-// mark is the highlight behind an annotated section of text
 mark {
-  padding: .5rem;
+  padding: 0.5rem;
   position: relative;
   background-color: burlywood;
   border: 1px solid $grey-7;
   border-radius: 0.35rem;
 }
-// tag is the label/class tag on an annotated section of text
 .tag {
   background-color: whitesmoke;
   padding: 4px 0 4px 8px;
