@@ -66,7 +66,7 @@ export default {
   },
   data() {
     return {
-      currentPage: "start",
+      // currentPage: "start", this is now global in index.js store, not local
       overlayActive: false,
       pendingFileDrop: null,
     };
@@ -81,12 +81,15 @@ export default {
     ExitDialog
   },
   computed: {
-    ...mapState(["annotations", "classes"]),
+    ...mapState(["annotations", "classes", "currentPage"]),
   },
   methods: {
-    ...mapMutations(["loadClasses", "loadAnnotations", "setInputSentences", "clearAllAnnotations", "resetIndex"]),
+    ...mapMutations(["loadClasses", "loadAnnotations", "setInputSentences", "clearAllAnnotations", "resetIndex", "setCurrentPage"]),
     switchToPage(page) {
-      this.currentPage = page;
+      // console.log("page in App.switchToPage (before):", this.currentPage)
+      this.setCurrentPage(page);
+      // console.log("page in App.switchToPage (after):", this.currentPage)
+      // console.log("page in App.switchToPage (after):", $store.state.currentPage)
     },
     onDragEnter() {
       console.log("Here");

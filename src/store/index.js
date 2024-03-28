@@ -23,6 +23,14 @@ const niceColors = [
 ];
 
 export const mutations = {
+
+  setCurrentPage(state, page) {
+    if (page !== 'start' && page !== 'annotate' && page !== 'review') {
+      throw new Error("setCurrentPage: must be start, annotate, or review");
+    }
+    state.currentPage = page;
+  },
+
   loadClasses(state, payload) {
     if (!Array.isArray(payload)) {
       throw new Error("loadClasses: payload must be an array");
@@ -293,6 +301,7 @@ export default {
       currentClass: tags && tags[0] || {},
       currentIndex: 0,
       currentSentence: "",
+      currentPage: 'start',
     };
   },
   getters,
