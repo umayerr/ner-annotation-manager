@@ -120,8 +120,11 @@ export default {
         // types are already handled in processFileDrop().
       }
     },
-    // If you modify this function, you may also wish to modify
-    // onFileSelected() in StartPage.vue.
+    // processFileDrop() is called if the user drags and drops in a
+    //    file at any point in the application, on any screen. If
+    //    you modify this function, you may also want to modify
+    //    LoadTextFile#onFileSelected(), and
+    //    StartPage#onFileSelected() to match.
     processFileDrop() {
       let fileType = this.pendingFileDrop.name.split('.').pop();
       let reader = new FileReader();
@@ -140,9 +143,6 @@ export default {
         }
         // If it is a json file, enter review mode
         else if (fileType === "json") {
-          console.log("Will enter review mode: not yet implemented")
-          // TODO: implement logic here that would enter review mode.
-          //    The code below imports the tags file.
           this.loadAnnotations(JSON.parse(file));
           this.switchToPage('review');
           this.notify(

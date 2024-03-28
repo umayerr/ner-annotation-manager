@@ -146,8 +146,8 @@ export default {
     // onFileSelected() is called if the user clicks and manually
     //    selects a file. If they drag and drop, that is handled in
     //    App.vue. If you modify this function, you may also want to 
-    //    modify the other functions in App.vue to match: onDrop() 
-    //    and processFileDrop().
+    //    modify App#onDrop(), App#processFileDrop(), and
+    //    LoadTextFile#onFileSelected() to match
     onFileSelected(file) {
       let fileType = file.name.split('.').pop();
         // If it is a text file, enter annotation mode

@@ -1,6 +1,4 @@
- <!-- TODO: I have only updated the drag method and click method on start page. I haven't hardly touched this file. -->
-
- <template>
+<template>
   <div class="field">
     <div class="file is-centered is-primary has-name is-boxed my-4">
       <label class="file-label">
@@ -32,6 +30,11 @@ export default {
   emits: ["text-file-loaded", "json-file-loaded"],
   methods: {
     ...mapMutations(["setInputSentences"]),
+    // onFileSelected() is called if the user clicks and manually
+    //    selects a file. If they drag and drop, that is handled in
+    //    App.vue. If you modify this function, you may also want to 
+    //    modify App#onDrop(), App#processFileDrop(), and
+    //    StartPage#onFileSelected() to match
     onFileSelected(files) {
       let fs = files.target.files;
       if (!fs.length || fs.length > 1) {
@@ -55,7 +58,7 @@ export default {
         this.loadAnnotations(JSON.parse(file));
         this.notify(
           "fa fa-check",
-          `${this.classes.length} tags imported successfully\n, Annotations imported successfully`,
+          `${this.classes.length} tags imported successfully\n, annotations imported successfully`,
           "positive"
         );
         this.$emit("json-file-loaded")
