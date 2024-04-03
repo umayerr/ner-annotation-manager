@@ -23,14 +23,6 @@ const niceColors = [
 ];
 
 export const mutations = {
-
-  setCurrentPage(state, page) {
-    if (page !== 'start' && page !== 'annotate' && page !== 'review') {
-      throw new Error("setCurrentPage: must be start, annotate, or review");
-    }
-    state.currentPage = page;
-  },
-
   loadClasses(state, payload) {
     if (!Array.isArray(payload)) {
       throw new Error("loadClasses: payload must be an array");
@@ -98,35 +90,21 @@ export const mutations = {
     }
   
     function processJsonData(jsonData) {
-      const entityToClassMap = Object.fromEntries(jsonData.classes.map(cls => [cls.name, cls]));
   
       const processedTexts = jsonData.annotations.map(([annotationText, annotationEntities], i) => {
-        const entities = annotationEntities?.entities;
   
-        const annotationClassIds = entities
-          ? entities.reduce((classIds, entity) => {
-              if (entity.length >= 3) {
-                const className = entity[2];
-                const classId = entityToClassMap[className]?.id;
-                if (classId) {
-                  classIds.push(classId);
-                }
-              }
-              return classIds;
-            }, [])
-          : [];
-  
-        console.log('Adding classes:', annotationClassIds);
         // Store the history of annotations to export to review page 
         let annotationHistory = [];
         // Set the current class for the preceding two indices of each entity
+        /* THIS IS FOR THEIR OLD FILE STRUCTURE 
         if (annotationClassIds.length > 0) {
           annotationEntities.entities.forEach(entity => {
             if (entity.length >= 3) {
-              const label = entity[2];
               const start = entity[0];
               const end = entity[1];
+              // type = the block of information that contains the name, date label etc..
               const type = entity[3];
+              const label = entity[2];
               const name = type[0][3];
               const status = type[0][4];
               console.log("label: ",label, "start: ",start, "end: ",end, "type: ",type, "name: ", name, "status: ", status);
@@ -134,15 +112,38 @@ export const mutations = {
               const textSnippet = annotationText.slice(start, end);
               const textIndices = [start - 1, start - 2]; // Adjust indices as needed
   
-              console.log(state, label, textSnippet, textIndices);
+              console.log("THIS CONSOLE.LOG", sstate, label, textSnippet, textIndices);
             }
+        }); */
+          console.log("help")
+          annotationEntities.entities.forEach(entity => {
+              if (entity.length >= 3) {
+                  console.log("help")
+                  const start = entity[0];
+                  const end = entity[1];
+                  // Update to accommodate your requirement
+                  const types = entity[2]; // This will store all blocks as you wanted
+                  const type = types[types.length - 1]; // This now assigns only the last block to 'type'
+                  const label = type[3];
+                  const name = type[2];
+                  const status = type[0];
+      
+                  console.log("label: ",label, "start: ",start, "end: ",end, "type: ",type, "name: ", name, "status: ", status);
+                  annotationHistory.push([label, start, end, type, name, status]);
+      
+                  const textSnippet = annotationText.slice(start, end);
+                  const textIndices = [start - 1, start - 2]; // Adjust indices as needed
+      
+                  console.log("THIS CONSOLE.LOG", state, label, textSnippet, textIndices);
+              }
+      
           });
-          state.annotationHistory = annotationHistory;
-          console.log("Updated state.annotationHistory:", state.annotationHistory);
-        }
-  
-        return { id: i, text: annotationText };
-      });
+        state.annotationHistory = annotationHistory;
+        console.log("Updated state.annotationHistory:", state.annotationHistory);
+      
+
+      return { id: i, text: annotationText };
+    });
   
       state.inputSentences = processedTexts;
       state.originalText = processedTexts.map(item => item.text).join(state.separator);
@@ -301,7 +302,6 @@ export default {
       currentClass: tags && tags[0] || {},
       currentIndex: 0,
       currentSentence: "",
-      currentPage: 'start',
     };
   },
   getters,
