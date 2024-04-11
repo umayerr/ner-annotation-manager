@@ -8,7 +8,7 @@
       :total="inputSentences.length"
     />
     <keyboard-shortcuts />
-    <view-rejected />
+    <show-rejected />
   </nav>
 </template>
 
@@ -18,7 +18,7 @@ import ProgressBar from "./sidebar/ProgressBar.vue";
 import SplitTypeSelector from "./sidebar/SplitTypeSelector.vue";
 import AnnotationPrecisionSelector from "./sidebar/AnnotationPrecisionSelector.vue";
 import KeyboardShortcuts from "./sidebar/KeyboardShortcuts.vue";
-import ViewRejected from "./sidebar/ViewRejected.vue";
+import ShowRejected from "./sidebar/ShowRejected.vue";
 
 export default {
   name: "AnnotationSidebar",
@@ -27,7 +27,7 @@ export default {
     SplitTypeSelector,
     AnnotationPrecisionSelector,
     KeyboardShortcuts,
-    ViewRejected,
+    ShowRejected,
   },
   computed: {
     ...mapState(["currentIndex", "inputSentences"]),
