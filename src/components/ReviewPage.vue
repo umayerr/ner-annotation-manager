@@ -119,6 +119,7 @@ export default {
     }
     document.addEventListener("mouseup", this.selectTokens);
     document.addEventListener('keydown', this.keypress);
+    // console.log(this.tm.tokens)
   },
   beforeUnmount() {
     document.removeEventListener("mouseup", this.selectTokens);

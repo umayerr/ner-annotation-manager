@@ -9,7 +9,17 @@
     />
     <span class="tag">
       <!-- Toggle status cycle button -->
-      <i v-if="this.currentPage==='review'" :class="symbolClass" @click="toggleSymbol"></i>
+      <!-- <i v-if="this.currentPage==='review'" :class="symbolClass" @click="toggleSymbol"></i> -->
+      <q-btn
+        v-if="this.currentPage==='review'"
+        :icon="symbolClass"
+        round
+        flat
+        size="xs"
+        text-color="grey-7"
+        title="Change the status for this annotation."
+        @click.stop="toggleSymbol"
+      />
       {{ token.label }}
       <!-- Replace label button (double arrows) -->
       <q-btn v-if="this.currentPage==='annotate'"
@@ -19,7 +29,7 @@
         size="xs"
         text-color="grey-7"
         title="Change label to currently selected label"
-        @click="$emit('replace-block-label', token.start)"
+        @click.stop="$emit('replace-block-label', token.start)"
       />
       <!-- Delete label button (X) -->
       <!-- Note: changed from @click to @click.stop -->
@@ -31,6 +41,17 @@
         text-color="grey-7"
         title="Delete annotation"
         @click.stop="$emit('remove-block', token.start)" 
+      />
+      <!-- Reviewed button (filled or empty square) -->
+      <q-btn
+        v-if="this.currentPage==='review'"
+        :icon="reviewedIconClass"
+        round
+        flat
+        size="xs"
+        text-color="grey-9"
+        title="Dark indicates that you have reviewed this annotation, light means you have not."
+        @click.stop="toggleReviewed"
       />
     </span>
   </mark>
@@ -55,6 +76,7 @@ export default {
         // Initial state
         isSymbolActive: false,
         userHasToggled: false, // Tracks if the user has interacted with the token
+        isReviewed: false, // set to false when loaded in. changed to true if the user changes the state or clicks the icon itself
       };
     },
   computed: {
@@ -66,6 +88,13 @@ export default {
         } else {
           // Once toggled, switch between checkmark and cross
           return this.isSymbolActive ? "fas fa-check-circle" : "fas fa-times-circle";
+        }
+      },
+      reviewedIconClass() {
+        if (this.userHasToggled) {
+          return 'fas fa-square'
+        } else {
+          return this.isReviewed ? 'fas fa-square' : 'far fa-square';
         }
       },
     },
@@ -80,6 +109,9 @@ export default {
         }
         this.userHasToggled = true;
       },
+      toggleReviewed() {
+        this.isReviewed = !this.isReviewed;
+      }
     },
     created() {
 },
