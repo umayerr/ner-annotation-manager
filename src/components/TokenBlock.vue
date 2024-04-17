@@ -72,15 +72,14 @@ export default {
     ...mapState(["currentPage"]),
     symbolClass() {
       switch (this.isSymbolActive) {
-        case 0: return "fas fa-minus-circle";
-        case 1: return "fas fa-check-circle";
-        case 2: return "fas fa-times-circle";
-        default: return "fas fa-question-circle";
+        case 0: return "fas fa-hourglass-start fa-lg"; // Suggested - Hourglass implies waiting or potential
+        case 1: return "fas fa-thumbs-up fa-lg"; //accepted
+        case 2: return "fas fa-skull-crossbones fa-lg"; //rejected
+        default: return "fas fa-question-circle fa-lg";
       }
     },
     reviewedIconClass() {
-      return this.userHasToggled ? 'fas fa-square' : 'far fa-square';
-    },
+      return this.userHasToggled ? 'fas fa-toggle-on' : 'fas fa-toggle-off';    },
   },
   methods: {
     toggleSymbol() {
@@ -117,23 +116,24 @@ export default {
 
 <style lang="scss">
 mark {
-  padding: 0.5rem;
+  padding: 0.7rem; /* Increased from 0.5rem */
   position: relative;
   background-color: burlywood;
-  border: 1px solid $grey-7;
-  border-radius: 0.35rem;
+  border: 2px solid $grey-7; /* Thicker border for emphasis */
+  border-radius: 0.5rem; /* Larger border-radius */
 }
 .tag {
   background-color: whitesmoke;
-  padding: 4px 0 4px 8px;
-  border: 1px solid grey;
-  border-radius: 0.35rem;
-  font-size: x-small;
+  padding: 6px 0 8px 16px; /* Increased padding for larger tag area */
+  border: 2px solid grey; /* Thicker border */
+  border-radius: 0.5rem; /* Larger border-radius */
+  font-size: small; /* Increased font size for better visibility */
 }
 .shadow-unreviewed {
-  box-shadow: 0 0 10px 4px goldenrod;
+  box-shadow: 0 0 2px 2px goldenrod; /* Larger and more pronounced shadow */
 }
 .bg-red {
-  box-shadow: 0 0 10px 4px red;
+  box-shadow: 0 0 2px 2px red; /* Larger and more pronounced shadow */
 }
 </style>
+

@@ -60,7 +60,7 @@ class TokenManager {
       end: _end,
       name: name,
       label: _class.name,
-      humanOpinion: humanOpinion,
+      humanOpinion: true,
       initiallyNLP: initiallyNLP,
       userHasToggled: userHasToggled, // Ensure it's set for the new block
       isSymbolActive: isSymbolActive, // Ensure it's set for the new block
@@ -139,6 +139,7 @@ class TokenManager {
           end: tokens[tokens.length - 1].end,
           name: name,
           tokens: tokens,
+          humanOpinion: true,
           label: _class.name,
           classId: _class.id || 0,
           backgroundColor: _class.color || null,
