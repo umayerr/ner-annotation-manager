@@ -64,14 +64,14 @@
         </q-input>
       </div>
       <div class="buttons">
-        <q-btn
+        <q-btn v-if="$store.state.currentPage !== 'review'"
           outline
           @click="showNewClassInput = true"
           label="New Tag"
           class="q-mr-sm"
           :color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
         />
-        <q-btn
+        <q-btn v-if="$store.state.currentPage !== 'review'"
           outline
           @click="showDeleteButtons = !showDeleteButtons"
           :label="showDeleteButtons ? 'Lock Tags' : 'Edit Tags'"
