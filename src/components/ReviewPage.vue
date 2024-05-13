@@ -1,14 +1,18 @@
 <template>
+      
   <div>
     <classes-block />
     <div class="q-pa-lg" style="height:60vh; overflow-y:scroll;">
       <component
         :is="t.type === 'token' ? 'Token' : 'TokenBlock'"
         v-for="t in tm.tokens"
-        :key="t.start"
+        :key="`${t.type}-${t.start}`"
         :token="t"
+        :class="[t.userHasToggled ? 'user-active' : 'user-inactive']"
+        :isSymbolActive="t.isSymbolActive"
         :backgroundColor="t.backgroundColor"
-        :humanOpinion="t.humanOpinion"        
+        :humanOpinion="t.humanOpinion"
+        @update-symbol-state="handleSymbolUpdate(t.start, $event.newSymbolState, $event.userHasToggled)"
         @remove-block="onRemoveBlock"
         @replace-block-label="onReplaceBlockLabel"
       />
@@ -32,7 +36,7 @@
         @click="resetBlocks"
         label="Reset"
       />
-      <q-btn
+      <q-btn 
         class="q-mx-sm"
         :color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
         outline
@@ -57,6 +61,14 @@
         @click="saveTags"
         label="Save"
       />
+      <q-input
+        filled
+        v-model="annotatorName"
+        label="Annotator Name"
+        lazy-rules
+        :rules="[val => !!val || 'Name is required']"
+        @blur="updateAnnotatorName"
+      />
     </div>
   </div>
 </template>
@@ -72,11 +84,14 @@ export default {
   name: "ReviewPage",
   data: function() {
     return {
+      currentPage: 'Review',
       tm: new TokenManager([]),
       currentSentence: {},
       redone: "",
       tokenizer: new TreebankTokenizer(),
       addedTokensStack: [],
+      undoStack: [],
+      annotatorName: '',  // Added for storing the current annotator's name
     };
   },
   components: {
@@ -119,7 +134,9 @@ export default {
     }
     document.addEventListener("mouseup", this.selectTokens);
     document.addEventListener('keydown', this.keypress);
-    // console.log(this.tm.tokens)
+
+    // Load the annotator's name from Vuex or local storage
+    this.annotatorName = this.getAnnotatorName(); // Assume getAnnotatorName is a method that retrieves the name
   },
   beforeUnmount() {
     document.removeEventListener("mouseup", this.selectTokens);
@@ -143,9 +160,177 @@ export default {
       // stop event from bubbling up
       event.stopPropagation()
     },
-    undo() {
-      console.log("Undo Stack:", this.addedTokensStack);
+    getAnnotatorName() {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.startsWith('annotator=')) {
+          return cookie.substring('annotator='.length);
+        }
+      }
+      return null; // Return null if annotator's name is not found
     },
+
+    updateAnnotatorName() {
+      document.cookie = `annotator=${this.annotatorName}; expires=Fri, 31 Dec 9999 23:59:59 GMT`;
+    },
+    recordAction(action) {
+      console.log("Recording action:", action); // This will log the action being recorded
+      this.undoStack.push(action);
+      // Sort the undo stack by the timestamp to ensure the latest action is on top
+      this.undoStack.sort((a, b) => b.timestamp - a.timestamp);
+    },
+    handleSymbolUpdate(tokenStart, newSymbolState, userHasToggled) {
+      const token = this.tm.getTokenByStart(tokenStart);
+      if (!token) {
+        console.error("No token found for start:", tokenStart);
+        return;
+      }
+
+      const oldSymbolState = token.isSymbolActive;
+      const oldUserHasToggled = token.userHasToggled;
+
+      // Update the token's state and toggled status
+      this.tm.updateSymbolState(tokenStart, newSymbolState);
+      token.userHasToggled = userHasToggled; // Ensure this property exists and is settable
+
+      this.recordAction({
+        type: 'symbolUpdate',
+        details: {
+          tokenStart,
+          oldSymbolState,
+          newSymbolState,
+          oldUserHasToggled,
+          newUserHasToggled: userHasToggled,
+          timestamp: Date.now()
+        }
+      });
+
+      console.log("Updated symbol state and user toggled status:", tokenStart, newSymbolState, userHasToggled);
+    },
+    onAddBlock(start, end, _class, humanOpinion, initiallyNLP = false, isLoaded, name="name", status="suggested", annotationHistory, userHasToggled = false, isSymbolActive = 0) {
+      console.log("Adding block:", start, end, _class);  // Confirm
+      this.recordAction({
+            type: 'addBlock',
+            details: {
+                start,
+                end,
+                _class,
+                humanOpinion,
+                initiallyNLP,
+                isLoaded,
+                name,
+                status,
+                annotationHistory,
+                userHasToggled,
+                isSymbolActive,
+                timestamp: Date.now()
+            }
+        });
+        this.tm.addNewBlock(start, end, _class, humanOpinion, initiallyNLP, isLoaded, name, status, annotationHistory, userHasToggled, isSymbolActive);
+        // Ensure that the action is correctly recorded in the undo stack
+    },
+    revertAddBlock(details) {
+        // Assuming you have a method to remove a block based on some criteria
+        this.tm.removeBlock(details.start, details.end, details._class);
+    },
+    onRemoveBlock(tokenStart) {
+        const block = this.tm.getBlockByStart(tokenStart);
+        if (!block) {
+            console.error('Block not found for start:', tokenStart);
+            return;
+        }
+        const blockDetails = {
+            start: block.start,
+            end: block.end,
+            _class: block.label,  // Assuming 'label' is the class; adjust if the actual property name differs
+            humanOpinion: block.humanOpinion,
+            initiallyNLP: block.initiallyNLP,
+            isLoaded: block.isLoaded,
+            name: block.name,
+            status: block.status,
+            annotationHistory: block.annotationHistory,
+            userHasToggled: block.userHasToggled,
+            isSymbolActive: block.isSymbolActive,
+            // Include any additional fields that are important for the functionality or logging
+        };
+        this.recordAction({
+            type: 'blockRemove',
+            details: {
+                tokenStart: block.start,
+                blockDetails: blockDetails,
+                timestamp: Date.now()
+            }
+        });
+        console.log("Removing block with details:", blockDetails);  // Logging all block details
+        this.tm.removeBlock(tokenStart);
+    },
+
+
+
+
+    undo() {
+        if (this.undoStack.length > 0) {
+            const lastAction = this.undoStack.pop(); // Get the most recent action
+            console.log("LAST ACTION BEFORE UNDO ",lastAction)
+            switch (lastAction.type) {
+              case 'symbolUpdate':
+                this.revertSymbolUpdate(lastAction.details);
+                break;
+              case 'blockRemove':
+                this.revertBlockRemove(lastAction.details);
+                break;
+              case 'addBlock':
+                this.revertAddBlock(lastAction.details);
+                break;
+              default:
+                console.log("Unhandled action type:", lastAction.type);
+            }
+        } else {
+            console.log("Undo Stack is empty");
+        }
+    },
+    revertSymbolUpdate(details) {
+      // Revert the symbol state
+      this.tm.updateSymbolState(details.tokenStart, details.oldSymbolState);
+      // Revert the user toggle status
+      const token = this.tm.getTokenByStart(details.tokenStart);
+      if (token) {
+        token.userHasToggled = details.oldUserHasToggled;
+      }
+      console.log("Reverted symbol state and user toggled status for token:", details.tokenStart);
+    },
+    revertBlockAdd(details) {
+      // Assuming a method to remove a block if added inappropriately
+      this.tm.removeBlock(details.tokenStart);
+    },
+    revertBlockRemove(details) {
+        if (details && details.blockDetails) {
+            console.log("Reverting with class details:", details.blockDetails._class);
+            if (!details.blockDetails._class) {
+                console.error('Class details are missing');
+                return;
+            }
+            // Assuming other necessary parameters are also needed
+            this.tm.addNewBlock(
+                details.blockDetails.start,
+                details.blockDetails.end,
+                details.blockDetails._class,
+                details.blockDetails.humanOpinion, // Assuming humanOpinion is a needed parameter
+                details.blockDetails.initiallyNLP, // Assuming initiallyNLP is needed
+                details.blockDetails.isLoaded,     // Assuming isLoaded is needed
+                details.blockDetails.name,         // Assuming name is needed
+                details.blockDetails.status,       // Assuming status is needed
+                details.blockDetails.annotationHistory, // Assuming annotationHistory is needed
+                details.blockDetails.userHasToggled,    // Assuming userHasToggled is needed
+                details.blockDetails.isSymbolActive    // Assuming isSymbolActive is needed
+            );
+        } else {
+            console.error('Missing details for reverting block removal');
+        }
+    },
+
+
     /*
     // Load history of annotations from input file 
     applyAnnotationHistory() {
@@ -172,32 +357,43 @@ export default {
    applyAnnotationHistory() {
     const annotationHistory = this.annotationHistory;
     if (annotationHistory && annotationHistory.length > 0) {
-        annotationHistory.forEach((annotation) => {
-            const [labelName, start, end, , name, , ogNLP,types ] = annotation;
-            const humanOpinion = name !== "nlp";
-            const initiallyNLP = ogNLP
-            const _class = this.classes.find(cls => cls.name === labelName);
-            if (_class) {
-                //console.log("Loading: ",start, end, _class, humanOpinion, initiallyNLP, true, name, status,types);
-                this.tm.addNewBlock(start, end, _class, humanOpinion, initiallyNLP, true, name, status,types);
-            } else {
-                console.warn(`Label "${labelName}" not found in classes.`);
-            }
+      annotationHistory.forEach((annotation) => {
+        const [labelName, start, end, , name, status, ogNLP, types] = annotation;
+        const humanOpinion = name !== "nlp";
+        const initiallyNLP = ogNLP;
+        const _class = this.classes.find(cls => cls.name === labelName);
+        const isSymbolActive = this.determineSymbolState(status);
+        console.log("Added block with symbol ", isSymbolActive);
+
+        if (_class) {
+            // Determine the most recent status for isSymbolActive
+            this.tm.addNewBlock(start, end, _class, humanOpinion, initiallyNLP, true, name, status, types, false, isSymbolActive);
+        } else {
+            console.warn(`Label "${labelName}" not found in classes.`);
+        }
         });
 
-        // New logic to adjust humanOpinion based on 'nlp' name
+        // Adjust humanOpinion based on 'nlp' name
         this.tm.tokens.forEach(token => {
-          if (token.type === "token-block") {
-            // Determine if this block's annotations came from 'nlp'
-            const isNLP = annotationHistory.some(annotation => {
-              const [, start, end, , name] = annotation;
-              return name === "nlp" && token.start === start && token.end === end;
-            });
-            token.humanOpinion = !isNLP;
-          }
+            if (token.type === "token-block") {
+                const isNLP = annotationHistory.some(annotation => {
+                    const [, start, end, , name] = annotation;
+                    return name === "nlp" && token.start === start && token.end === end;
+                });
+                token.humanOpinion = !isNLP;
+            }
         });
-      }
-    },
+    }
+},
+
+determineSymbolState(status) {
+  switch (status) {
+    case "Accepted": return 1;
+    case "Rejected": return 2;
+    case "Suggested": return 0;
+    default: return 0; // Default to suggested if unrecognized status
+  }
+},
 
     tokenizeCurrentSentence() {
       this.currentSentence = this.inputSentences[this.currentIndex];
@@ -254,12 +450,18 @@ export default {
         return;
       }
       console.log("adding manual block ", start, end, this.currentClass);
-      this.tm.addNewBlock(start, end, this.currentClass, true, false);
+      this.tm.addNewBlock(start, end, this.currentClass, true, false, false, "name", "Suggested", null, true);
       this.addedTokensStack.push(start);
+      this.recordAction({
+        type: 'addBlock',
+        details: {
+          start: start,
+          end: end,
+          _class: this.currentClass,
+          timestamp: Date.now()
+        }
+      });
       selection.empty();
-    },
-    onRemoveBlock(blockStart) {
-      this.tm.removeBlock(blockStart);
     },
     // Replaces a token-block's class with the currently selected class
     onReplaceBlockLabel(blockStart) {
@@ -286,7 +488,7 @@ export default {
       this.tokenizeCurrentSentence();
     },
     backOneSentence() {
-      this.previousSentence();
+      this.previousSentence(); 
       this.tokenizeCurrentSentence();
     },
     saveTags() {
@@ -294,8 +496,8 @@ export default {
         text: this.currentSentence.text,
         entities: this.tm.exportAsAnnotation(),
       });
-      this.nextSentence();
-      this.tokenizeCurrentSentence();
+      // this.nextSentence();
+      // this.tokenizeCurrentSentence();
     },
   },
 };

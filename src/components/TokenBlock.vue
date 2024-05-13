@@ -1,48 +1,35 @@
 <template>
-  <mark :class="'bg-' + backgroundColor">
-    <component
-      :is="'Token'"
+  <mark :class="['bg-' + backgroundColor, {'shadow-unreviewed': !userHasToggled, 'bg-red': !token.humanOpinion}]">
+    <Token
       v-for="t in token.tokens"
-      :id="'t' + t.start"
       :key="t.start"
       :token="t"
     />
     <span class="tag">
       <!-- Toggle status cycle button -->
-      <!-- <i v-if="this.currentPage==='review'" :class="symbolClass" @click="toggleSymbol"></i> -->
-      <q-btn
-        v-if="this.currentPage==='review'"
-        :icon="symbolClass"
-        round
-        flat
-        size="xs"
-        text-color="grey-7"
-        title="Change the status for this annotation."
-        @click.stop="toggleSymbol"
-      />
+      <i v-if="this.currentPage==='review'" :class="symbolClass" @click="toggleSymbol"></i>
       {{ token.label }}
       <!-- Replace label button (double arrows) -->
-      <q-btn v-if="this.currentPage==='annotate'"
+      <q-btn
         icon="fa fa-exchange-alt"
         round
         flat
         size="xs"
         text-color="grey-7"
         title="Change label to currently selected label"
-        @click.stop="$emit('replace-block-label', token.start)"
+        @click="recordActionAndEmit('replace-block-label', token.start)"
       />
       <!-- Delete label button (X) -->
-      <!-- Note: changed from @click to @click.stop -->
       <q-btn
+        v-if="this.currentPage==='annotation'"  
         icon="fa fa-times-circle"
         round
         flat
         size="xs"
         text-color="grey-7"
         title="Delete annotation"
-        @click.stop="$emit('remove-block', token.start)" 
+        @click.stop="recordActionAndEmit('remove-block', token.start)" 
       />
-      <!-- Reviewed button (filled or empty square) -->
       <q-btn
         v-if="this.currentPage==='review'"
         :icon="reviewedIconClass"
@@ -70,81 +57,84 @@ export default {
     token: Object,
     backgroundColor: String,
     humanOpinion: Boolean,
+    isSymbolActive: {
+      type: Number,
+      default: 0
+    }
   },
   data() {
     return {
-        // Initial state
-        isSymbolActive: false,
-        userHasToggled: false, // Tracks if the user has interacted with the token
-        isReviewed: false, // set to false when loaded in. changed to true if the user changes the state or clicks the icon itself
-      };
-    },
+      userHasToggled: false,
+      suggestedState: false,
+      isReviewed: false,
+    };
+  },
   computed: {
-      ...mapState(["currentPage"]),
-      symbolClass() {
-        if (!this.userHasToggled)  {
-          // Initial icon state: circle only if humanOpinion is false, otherwise cross
-          return !this.humanOpinion ? "fas fa-circle" : "fas fa-times-circle";
-        } else {
-          // Once toggled, switch between checkmark and cross
-          return this.isSymbolActive ? "fas fa-check-circle" : "fas fa-times-circle";
-        }
-      },
-      reviewedIconClass() {
-        if (this.userHasToggled) {
-          return 'fas fa-square'
-        } else {
-          return this.isReviewed ? 'fas fa-square' : 'far fa-square';
-        }
-      },
-    },
-    methods: {
-      toggleSymbol() {
-        if (this.token.initiallyNLP && !this.userHasToggled) {
-          // If initially set by NLP and user hasn't toggled yet, allow toggle to false
-          this.isSymbolActive = false;
-        } else {
-          // Normal toggle behavior
-          this.isSymbolActive = !this.isSymbolActive;
-        }
-        this.userHasToggled = true;
-      },
-      toggleReviewed() {
-        this.isReviewed = !this.isReviewed;
+    ...mapState(["currentPage"]),
+    symbolClass() {
+      switch (this.isSymbolActive) {
+        case 0: return "fas fa-hourglass-start fa-lg"; // Suggested - Hourglass implies waiting or potential
+        case 1: return "fas fa-thumbs-up fa-lg"; //accepted
+        case 2: return "fas fa-ban fa-lg"; //rejected
+        default: return "fas fa-question-circle fa-lg";
       }
     },
-    created() {
-},
+    reviewedIconClass() {
+      return this.userHasToggled ? 'fas fa-toggle-on' : 'fas fa-toggle-off';    },
+  },
+  methods: {
+    toggleSymbol() {
+      this.recordAction('symbol-state', this.isSymbolActive);
+      let nextState = (this.isSymbolActive + 1) % 3;
+      this.userHasToggled = true;
+      this.$emit('update-symbol-state', {
+        tokenStart: this.token.start,
+        newSymbolState: nextState
+      });
+    },
+    toggleReviewed() {
+      this.recordAction('review-state', this.isReviewed);
+      this.isReviewed = !this.isReviewed;
+      this.userHasToggled = true;  // Set userHasToggled to true when review state is toggled
+    },
+    recordAction(actionType, previousState) {
+      const action = {
+        type: actionType,
+        tokenStart: this.token.start,
+        previousState: previousState,
+        newState: this[actionType === 'symbol-state' ? 'isSymbolActive' : 'isReviewed'],
+        timestamp: Date.now()
+      };
+      this.$emit('record-undo', action);
+    },
+    recordActionAndEmit(action, payload) {
+      this.recordAction(action, this.token);
+      this.$emit(action, payload);
+    },
+  },
 };
 </script>
 
 <style lang="scss">
 mark {
-  padding: 0.5rem;
+  padding: 0.7rem; /* Increased from 0.5rem */
   position: relative;
   background-color: burlywood;
-  border: 1px solid $grey-7;
-  border-radius: 0.35rem;
+  border: 2px solid $grey-7; /* Thicker border for emphasis */
+  border-radius: 0.5rem; /* Larger border-radius */
 }
 .tag {
   background-color: whitesmoke;
-  padding: 4px 0 4px 8px;
-  border: 1px solid grey;
-  border-radius: 0.35rem;
-  font-size: x-small;
+  padding: 6px 0 8px 16px; /* Increased padding for larger tag area */
+  border: 2px solid grey; /* Thicker border */
+  border-radius: 0.5rem; /* Larger border-radius */
+  font-size: small; /* Increased font size for better visibility */
 }
-.close-btn {
-  cursor: pointer;
-  font-size: small;
-  position: absolute;
-  width: 1rem;
-  height: 1rem;
-  padding-left: 0.2rem;
-  border-radius: 50%;
-  background-color: black;
-  color: white;
+.shadow-unreviewed {
+  box-shadow: 0 0 2px 2px goldenrod; /* Larger and more pronounced shadow */
 }
-.delete {
-  margin-left: 10px;
+.bg-red {
+  box-shadow: 0 0 2px 2px red; /* Larger and more pronounced shadow */
 }
 </style>
+

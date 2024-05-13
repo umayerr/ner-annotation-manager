@@ -8,6 +8,10 @@ class TokenManager {
     this.tokens = []; // Initialize tokens array
   }
 
+  getTokenByStart(start) {
+      return this.tokens.find(token => token.start === start);
+  }
+
   setTokensAndAnnotation(tokens, currentAnnotation) {
     // Initialize tokens with provided annotation data
     this.tokens = tokens.map((t) => ({
@@ -15,7 +19,8 @@ class TokenManager {
       start: t[0],
       end: t[1],
       text: t[2],
-      humanOpinion: true, // Default humanOpinion to true for all initial tokens
+      humanOpinion: true,
+      isSymbolActive: 0, // Default humanOpinion to true for all initial tokens
     }));
     this.words = tokens.map(t => t[2]);
 
@@ -27,7 +32,6 @@ class TokenManager {
         var entityName = currentAnnotation.entities[i][3];
         console.log("ENTITYNAME: ",entityName, currentAnnotation.entities[i]);
         var entityClass = this.classes.find(c => c.name.toUpperCase() === entityName.toUpperCase());        
-        entityClass = entityClass.name;
         console.log("SETTOKENENTITYCLSAS: ",entityClass);
         if (!entityClass) {
           entityClass = {"name": entityName};
@@ -47,7 +51,7 @@ class TokenManager {
    * @param {Boolean} isHumanOpinion Seperate nlp vs human made annotation
 
    */
-  addNewBlock(_start, _end, _class, humanOpinion, initiallyNLP = false, isLoaded, name="name", status ="suggested", annotationHistory) {
+  addNewBlock(_start, _end, _class, humanOpinion, initiallyNLP = false, isLoaded, name="name", status ="suggested", annotationHistory, userHasToggled = true,isSymbolActive = 0) {
     // Directly apply humanOpinion to the block structure
     let block = {
       type: "token-block",
@@ -56,10 +60,10 @@ class TokenManager {
       end: _end,
       name: name,
       label: _class.name,
-      humanOpinion: humanOpinion,
+      humanOpinion: true,
       initiallyNLP: initiallyNLP,
-      userHasToggled: false, // Ensure it's set for the new block
-      isSymbolActive: false, // Ensure it's set for the new block
+      userHasToggled: userHasToggled, // Ensure it's set for the new block
+      isSymbolActive: isSymbolActive, // Ensure it's set for the new block
       isSuggested: false,
       isLoaded: isLoaded,
       status: status,
@@ -135,13 +139,14 @@ class TokenManager {
           end: tokens[tokens.length - 1].end,
           name: name,
           tokens: tokens,
+          humanOpinion: true,
           label: _class.name,
           classId: _class.id || 0,
           backgroundColor: _class.color || null,
           // Set these attributes for all token-blocks, updating existing blocks as needed
           initiallyNLP: updateAttributes ? initiallyNLP : false,
-          userHasToggled: false,
-          isSymbolActive: false,
+          userHasToggled: true,
+          isSymbolActive: isSymbolActive,
           isLoaded: isLoaded,
           status: status,
           annotationHistory: annotationHistory,
@@ -149,9 +154,9 @@ class TokenManager {
         tokensArray.push(newBlock);
       }
   }
+  
   }
   
-    
 
   /**
    * Removes a token block and puts back all the tokens in their original position
@@ -188,6 +193,13 @@ class TokenManager {
     this.tokens = newTokens;
   }
 
+  updateSymbolState(tokenStart, newSymbolState) {
+    const tokenBlock = this.tokens.find(token => token.type === 'token-block' && token.start === tokenStart);
+    if (tokenBlock) {
+      tokenBlock.isSymbolActive = newSymbolState;
+      tokenBlock.userHasToggled = true; // Update based on user interaction
+    }
+  }
   /**
    * Exports the tokens and the token blocks as annotations
    */
@@ -222,6 +234,8 @@ class TokenManager {
     return null;
   }  
 }
+
+
 
 export default TokenManager;
 

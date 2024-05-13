@@ -185,5 +185,9 @@ export default {
       this.$q.dark.toggle();
     },
   },
+  mounted() {
+    // Automatically toggle the dark mode when the page loads
+    this.toggleDarkMode();
+  },
 };
 </script>
