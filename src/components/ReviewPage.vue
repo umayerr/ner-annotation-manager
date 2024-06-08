@@ -91,7 +91,7 @@ export default {
       tokenizer: new TreebankTokenizer(),
       addedTokensStack: [],
       undoStack: [],
-      annotatorName: '',  // Added for storing the current annotator's name
+      annotatorName: '', 
     };
   },
   components: {
@@ -266,9 +266,6 @@ export default {
         this.tm.removeBlock(tokenStart);
     },
 
-
-
-
     undo() {
         if (this.undoStack.length > 0) {
             const lastAction = this.undoStack.pop(); // Get the most recent action
@@ -329,32 +326,8 @@ export default {
             console.error('Missing details for reverting block removal');
         }
     },
-
-
-    /*
-    // Load history of annotations from input file 
+    // Inside AnnotationPage.vue
     applyAnnotationHistory() {
-      const annotationHistory = this.annotationHistory;
-      if (annotationHistory && annotationHistory.length > 0) {
-        annotationHistory.forEach((annotation) => {
-          const [labelName, start, end, , name] = annotation;
-          // Set humanOpinion to false ONLY if the name is "nlp"
-          const humanOpinion = name !== "nlp";
-          // Find the matching class object
-          const _class = this.classes.find(cls => cls.name === labelName);
-          if (_class) {
-            // Pass humanOpinion to the addNewBlock method of TokenManager
-            console.log("THE OPINION IS HUMAN? ", humanOpinion)
-            this.tm.addNewBlock(start, end, _class, humanOpinion);
-          } else {
-            console.warn(`Label "${labelName}" not found in classes.`);
-          }
-        });
-      }
-    },
-    */
-   // Inside AnnotationPage.vue
-   applyAnnotationHistory() {
     const annotationHistory = this.annotationHistory;
     if (annotationHistory && annotationHistory.length > 0) {
       annotationHistory.forEach((annotation) => {
@@ -383,17 +356,15 @@ export default {
                 token.humanOpinion = !isNLP;
             }
         });
-    }
-},
-
-determineSymbolState(status) {
-  switch (status) {
-    case "Accepted": return 1;
-    case "Rejected": return 2;
-    case "Suggested": return 0;
-    default: return 0; // Default to suggested if unrecognized status
-  }
-},
+      }},
+    determineSymbolState(status) {
+      switch (status) {
+        case "Accepted": return 1;
+        case "Rejected": return 2;
+        case "Suggested": return 0;
+        default: return 0; // Default to suggested if unrecognized status
+      }
+    },
 
     tokenizeCurrentSentence() {
       this.currentSentence = this.inputSentences[this.currentIndex];
@@ -419,7 +390,6 @@ determineSymbolState(status) {
       // Call applyAnnotationHistory after setting up tokens and annotations
       this.applyAnnotationHistory();
     },
-
     selectTokens() {
       let selection = document.getSelection();
 
@@ -480,8 +450,9 @@ determineSymbolState(status) {
       }
     },
     resetBlocks() {
-      this.tm.resetBlocks();
-      this.addedTokensStack = [];
+      while (this.undoStack.length > 0) {
+        this.undo();
+      }
     },
     skipCurrentSentence() {
       this.nextSentence();

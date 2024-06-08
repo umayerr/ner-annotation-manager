@@ -169,33 +169,6 @@
       },
       */
      // Inside AnnotationPage.vue
-     applyAnnotationHistory() {
-      const annotationHistory = this.annotationHistory;
-      if (annotationHistory && annotationHistory.length > 0) {
-          annotationHistory.forEach((annotation) => {
-              const [labelName, start, end, , name,, ogNLP] = annotation;
-              const humanOpinion = name !== "nlp";
-              const _class = this.classes.find(cls => cls.name === labelName);
-              if (_class) {
-                  this.tm.addNewBlock(start, end, _class, humanOpinion, ogNLP, true, name, status);
-              } else {
-                  console.warn(`Label "${labelName}" not found in classes.`);
-              }
-          });
-  
-          // New logic to adjust humanOpinion based on 'nlp' name
-          this.tm.tokens.forEach(token => {
-            if (token.type === "token-block") {
-              // Determine if this block's annotations came from 'nlp'
-              const isNLP = annotationHistory.some(annotation => {
-                const [, start, end, , name] = annotation;
-                return name === "nlp" && token.start === start && token.end === end;
-              });
-              token.humanOpinion = !isNLP;
-            }
-          });
-        }
-      },
   
       tokenizeCurrentSentence() {
         this.currentSentence = this.inputSentences[this.currentIndex];
@@ -293,8 +266,8 @@
           text: this.currentSentence.text,
           entities: this.tm.exportAsAnnotation(),
         });
-        this.nextSentence();
-        this.tokenizeCurrentSentence();
+        //this.nextSentence();
+        //this.tokenizeCurrentSentence();
       },
     },
   };

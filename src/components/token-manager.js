@@ -156,8 +156,6 @@ class TokenManager {
   }
   
   }
-  
-
   /**
    * Removes a token block and puts back all the tokens in their original position
    *
@@ -235,12 +233,4 @@ class TokenManager {
   }  
 }
 
-
-
 export default TokenManager;
-
-
-
-/// Make toggle between open/close/reject
-/// Update it so previous / loadable 
-/// 

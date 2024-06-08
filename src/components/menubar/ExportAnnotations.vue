@@ -1,3 +1,13 @@
+<template>
+  <q-item
+    v-close-popup
+    clickable
+    @click="generateJSONExport()"
+  >
+    <q-item-section>Export</q-item-section>
+  </q-item>
+</template>
+
 <script>
 import { mapState } from 'vuex'
 import { exportFile } from './utils'

@@ -80,29 +80,24 @@ export const mutations = {
     try {
       let jsonData;
       if (typeof payload === 'string') {
-        // Check if the payload is a JSON string
         try {
           jsonData = JSON.parse(payload);
-          // If successful, continue with the JSON data processing
         } catch (jsonError) {
-          // If JSON parsing fails, assume it's a text file and proceed to read its content
           jsonData = {
             annotations: [[payload, { entities: [] }]],
-            classes: [] // You may need to provide some default values here based on your needs
+            classes: [] 
           };
         }
       } else if (payload instanceof File) {
-        // If the payload is a File (assumed to be a text file), read its content
         const fileReader = new FileReader();
         fileReader.onload = function (event) {
           try {
             const fileContent = event.target.result;
             jsonData = {
               annotations: [[fileContent, { entities: [] }]],
-              classes: [] // You may need to provide some default values here based on your needs
+              classes: [] 
             };
   
-            // Proceed with the JSON data processing
             processJsonData(jsonData);
           } catch (error) {
             console.error(`Error processing text file: ${error.message}`);
@@ -115,22 +110,29 @@ export const mutations = {
         throw new Error("Invalid payload type");
       }
   
-      // Continue with the JSON data processing
       processJsonData(jsonData);
     } catch (error) {
       console.error(`Error processing payload: ${error.message}`);
     }
-  
     function processJsonData(jsonData) {
+      const defaultEntity = [0, 0, ["default"]]; // Define the default entity
       /*
       Function to process data in input entities section and map to token metadata
       Currenlty set to send the last annotation in the list of annotation history
       as the information which gets loaded into review page on enter
       */
       const processedTexts = jsonData.annotations.map(([annotationText, annotationEntities], i) => {
-        
-        // Store the history of annotations to export to review page 
         let annotationHistory = [];
+  
+        // Ensure annotationEntities and entities are properly initialized
+        if (!annotationEntities || !Array.isArray(annotationEntities.entities)) {
+          annotationEntities = { entities: [] };
+        }
+  
+        // Process entities if they exist; otherwise, initialize with the default entity
+        if (annotationEntities.entities.length === 0) {
+          annotationEntities.entities.push(defaultEntity);
+        } else {
         // Set the current class for the preceding two indices of each entity
         /* THIS IS FOR THEIR OLD FILE STRUCTURE 
         if (annotationClassIds.length > 0) {
@@ -151,10 +153,9 @@ export const mutations = {
               console.log("THIS CONSOLE.LOG", sstate, label, textSnippet, textIndices);
             }
         }); */
-          console.log("help")
+          
           annotationEntities.entities.forEach(entity => {
               if (entity.length >= 3) {
-                  console.log("help")
                   const start = entity[0];
                   const end = entity[1];
                   const types = entity[2]; // This will store all blocks as you wanted
@@ -173,20 +174,23 @@ export const mutations = {
               }
       
           });
+          if (!annotationEntities.entities.some(entity => entity.includes("default"))) {
+            annotationEntities.entities.push(defaultEntity);
+          }
+        }
+  
         state.annotationHistory = annotationHistory;
-        console.log("Updated state.annotationHistory:", state.annotationHistory);
-      
-
-      return { id: i, text: annotationText };
-    });
-  
-      state.inputSentences = processedTexts;
-      state.originalText = processedTexts.map(item => item.text).join(state.separator);
-  
-      if (jsonData.classes && Array.isArray(jsonData.classes)) {
-        mutations.loadClasses(state, jsonData.classes);
+    
+          return { id: i, text: annotationText, entities: annotationEntities.entities };
+        });
+    
+        state.inputSentences = processedTexts;
+        state.originalText = processedTexts.map(item => item.text).join(state.separator);
+    
+        if (jsonData.classes && Array.isArray(jsonData.classes)) {
+          mutations.loadClasses(state, jsonData.classes);
+        }
       }
-    }
   },  
   
   
