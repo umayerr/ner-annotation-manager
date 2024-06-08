@@ -326,7 +326,33 @@ export default {
             console.error('Missing details for reverting block removal');
         }
     },
-    // Inside AnnotationPage.vue
+    // Original Inside AnnotationPage.vue
+    
+    tokenizeCurrentSentence() {
+      this.currentSentence = this.inputSentences[this.currentIndex];
+      this.currentAnnotation = this.annotations[this.currentIndex];
+
+      let tokens, spans;
+
+      if (this.$store.state.annotationPrecision == "char") {
+        tokens = this.currentSentence.text.split('');
+        spans = [];
+        for (let i = 0; i < this.currentSentence.text.length; i++) {
+          spans.push([i, i + 1]);
+        }
+      } else {
+        tokens = this.tokenizer.tokenize(this.currentSentence.text);
+        spans = this.tokenizer.span_tokenize(this.currentSentence.text);
+      }
+
+      let combined = tokens.map((t, i) => [spans[i][0], spans[i][1], t]);
+
+      this.tm = new TokenManager(this.classes);
+      this.tm.setTokensAndAnnotation(combined, this.currentAnnotation);
+      // Call applyAnnotationHistory after setting up tokens and annotations
+      this.applyAnnotationHistory();
+    }, 
+    /*
     applyAnnotationHistory() {
     const annotationHistory = this.annotationHistory;
     if (annotationHistory && annotationHistory.length > 0) {
@@ -357,39 +383,46 @@ export default {
             }
         });
       }},
-    determineSymbolState(status) {
-      switch (status) {
-        case "Accepted": return 1;
-        case "Rejected": return 2;
-        case "Suggested": return 0;
-        default: return 0; // Default to suggested if unrecognized status
-      }
-    },
-
     tokenizeCurrentSentence() {
-      this.currentSentence = this.inputSentences[this.currentIndex];
-      this.currentAnnotation = this.annotations[this.currentIndex];
+    this.currentSentence = this.inputSentences[this.currentIndex];
+    this.currentAnnotation = this.annotations[this.currentIndex];
+    this.applyAnnotationHistory();
+    },*/
+    applyAnnotationHistory() {
+    const annotationHistory = this.annotationHistory[this.currentIndex]; 
+    if (annotationHistory && annotationHistory.length > 0) {
+      annotationHistory.forEach((annotation) => {
+        const [labelName, start, end, , name, status, ogNLP, types] = annotation;
+        const _class = this.classes.find(cls => cls.name === labelName); // Match class by label name
+        const isSymbolActive = this.determineSymbolState(status);
 
-      let tokens, spans;
-
-      if (this.$store.state.annotationPrecision == "char") {
-        tokens = this.currentSentence.text.split('');
-        spans = [];
-        for (let i = 0; i < this.currentSentence.text.length; i++) {
-          spans.push([i, i + 1]);
+        if (_class) {
+          this.tm.addNewBlock(start, end, _class, true, ogNLP, true, name, status, types, false, isSymbolActive);
+        } else {
+          console.warn(`Label "${labelName}" not found in classes.`);
         }
-      } else {
-        tokens = this.tokenizer.tokenize(this.currentSentence.text);
-        spans = this.tokenizer.span_tokenize(this.currentSentence.text);
-      }
+      });
 
-      let combined = tokens.map((t, i) => [spans[i][0], spans[i][1], t]);
+      this.tm.tokens.forEach(token => {
+        if (token.type === "token-block") {
+          const isNLP = annotationHistory.some(annotation => {
+            const [, start, end, , name] = annotation;
+            return name === "nlp" && token.start === start && token.end === end;
+          });
+          token.humanOpinion = !isNLP;
+        }
+      });
+    }
+  },
 
-      this.tm = new TokenManager(this.classes);
-      this.tm.setTokensAndAnnotation(combined, this.currentAnnotation);
-      // Call applyAnnotationHistory after setting up tokens and annotations
-      this.applyAnnotationHistory();
-    },
+  determineSymbolState(status) {
+    switch (status) {
+      case "Accepted": return 1;
+      case "Rejected": return 2;
+      case "Suggested": return 0;
+      default: return 0; // Default to suggested if unrecognized status
+    }
+  },
     selectTokens() {
       let selection = document.getSelection();
 

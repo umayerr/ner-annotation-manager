@@ -75,7 +75,7 @@ export const mutations = {
     state.currentClass = state.classes[0];
     LocalStorage.set("tags", state.classes);
   },
-  
+  /*
   setInputSentences(state, payload) {
     try {
       let jsonData;
@@ -115,16 +115,17 @@ export const mutations = {
       console.error(`Error processing payload: ${error.message}`);
     }
     function processJsonData(jsonData) {
-      const defaultEntity = [0, 0, ["default"]]; // Define the default entity
+      const defaultEntity = [[
+        0,
+        0,
+        [["Created", "2023-11-05", "SEWDO", "default"]]]]; // Define the default entity
       /*
       Function to process data in input entities section and map to token metadata
       Currenlty set to send the last annotation in the list of annotation history
       as the information which gets loaded into review page on enter
-      */
+      */ /*
       const processedTexts = jsonData.annotations.map(([annotationText, annotationEntities], i) => {
         let annotationHistory = [];
-  
-        // Ensure annotationEntities and entities are properly initialized
         if (!annotationEntities || !Array.isArray(annotationEntities.entities)) {
           annotationEntities = { entities: [] };
         }
@@ -133,26 +134,6 @@ export const mutations = {
         if (annotationEntities.entities.length === 0) {
           annotationEntities.entities.push(defaultEntity);
         } else {
-        // Set the current class for the preceding two indices of each entity
-        /* THIS IS FOR THEIR OLD FILE STRUCTURE 
-        if (annotationClassIds.length > 0) {
-          annotationEntities.entities.forEach(entity => {
-            if (entity.length >= 3) {
-              const start = entity[0];
-              const end = entity[1];
-              // type = the block of information that contains the name, date label etc..
-              const type = entity[3];
-              const label = entity[2];
-              const name = type[0][3];
-              const status = type[0][4];
-              console.log("label: ",label, "start: ",start, "end: ",end, "type: ",type, "name: ", name, "status: ", status);
-              annotationHistory.push([label, start, end, type, name, status]);
-              const textSnippet = annotationText.slice(start, end);
-              const textIndices = [start - 1, start - 2]; // Adjust indices as needed
-  
-              console.log("THIS CONSOLE.LOG", sstate, label, textSnippet, textIndices);
-            }
-        }); */
           
           annotationEntities.entities.forEach(entity => {
               if (entity.length >= 3) {
@@ -191,8 +172,91 @@ export const mutations = {
           mutations.loadClasses(state, jsonData.classes);
         }
       }
-  },  
+  }, */
+  setInputSentences(state, payload) {
+    try {
+      let jsonData;
+      if (typeof payload === 'string') {
+        try {
+          jsonData = JSON.parse(payload);
+        } catch (jsonError) {
+          jsonData = {
+            annotations: [[payload, { entities: [] }]],
+            classes: [] 
+          };
+        }
+      } else if (payload instanceof File) {
+        const fileReader = new FileReader();
+        fileReader.onload = function (event) {
+          try {
+            const fileContent = event.target.result;
+            jsonData = {
+              annotations: [[fileContent, { entities: [] }]],
+              classes: [] 
+            };
   
+            processJsonData(jsonData);
+          } catch (error) {
+            console.error(`Error processing text file: ${error.message}`);
+          }
+        };
+  
+        fileReader.readAsText(payload);
+        return;
+      } else {
+        throw new Error("Invalid payload type");
+      }
+  
+      processJsonData(jsonData);
+    } catch (error) {
+      console.error(`Error processing payload: ${error.message}`);
+    }
+  
+    function processJsonData(jsonData) {
+      const defaultEntity = [
+        [0, 0, [["Created", "2023-11-05", "SEWDO", "default"]]]
+      ]; // Define the default entity
+  
+      const processedTexts = jsonData.annotations.map(([annotationText, annotationEntities], i) => {
+        let annotationHistory = [];
+        if (!annotationEntities || !Array.isArray(annotationEntities.entities)) {
+          annotationEntities = { entities: [] };
+        }
+  
+        if (annotationEntities.entities.length === 0) {
+          annotationEntities.entities.push(defaultEntity);
+        } else {
+          annotationEntities.entities.forEach(entity => {
+            if (entity.length >= 3) {
+              const start = entity[0];
+              const end = entity[1];
+              const types = entity[2]; // This will store all blocks
+              const type = types[types.length - 1]; // This assigns only the last block to 'type'
+              const label = type[3]; // Extract just the label name for matching
+              const name = type[2];
+              const status = type[0];
+              const ogNLP = types.some(t => t[2] === 'nlp'); // Check if any type was NLP
+  
+              annotationHistory.push([label, start, end, type, name, status, ogNLP, types]);
+              console.log("Loaded annotation history:", types);
+            }
+          });
+        }
+  
+        // Assign annotation history for the current section without overriding others
+        state.annotationHistory[i] = annotationHistory.length ? annotationHistory : [defaultEntity];
+  
+        return { id: i, text: annotationText, entities: annotationEntities.entities };
+      });
+  
+      state.inputSentences = processedTexts;
+      state.originalText = processedTexts.map(item => item.text).join(state.separator);
+  
+      if (jsonData.classes && Array.isArray(jsonData.classes)) {
+        mutations.loadClasses(state, jsonData.classes);
+      }
+    }
+  },
   
   addClass(state, payload) {
     // Check if the class already exists
